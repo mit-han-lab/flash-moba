@@ -7,7 +7,7 @@ FlashMoBA is a memory-efficient sparse attention mechanism designed to accelerat
 **Optimizing Mixture of Block Attention**  
 Guangxuan Xiao<sup>&#42;</sup>, Junxian Guo<sup>&#42;</sup>, Kasra Mazaheri, Song Han
 
-Paper: [Optimizing Mixture of Block Attention]()
+Paper: [Optimizing Mixture of Block Attention](https://arxiv.org/abs/2511.11571)
 
 ## News
 
@@ -213,10 +213,13 @@ Benchmarks were run on an H100 GPU with the following parameters:
 ## Citation
 If you use this codebase, or otherwise found our work valuable, please cite:
 ```
-@inproceedings{xiao2025optimizing,
-  title={Optimizing Mixture of Block Attention},
-  author={Xiao, Guangxuan and Guo, Junxian and Mazaheri, Kasra and Han, Song},
-  booktitle={},
-  year={2025}
+@misc{xiao2025optimizingmixtureblockattention,
+      title={Optimizing Mixture of Block Attention}, 
+      author={Guangxuan Xiao and Junxian Guo and Kasra Mazaheri and Song Han},
+      year={2025},
+      eprint={2511.11571},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2511.11571}, 
 }
 ```
