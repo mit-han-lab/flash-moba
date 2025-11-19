@@ -38,6 +38,13 @@ def decide_lg_block_m(top_k: int, chunk_size: int, seqlen: int, causal: bool = F
     else:
         lg_block_m = 1024
 
+    # [Optimization] Hardware-aware cap for A6000/3090/4090 to avoid Shared Memory OOM
+    if torch.cuda.is_available():
+        major, minor = torch.cuda.get_device_capability()
+        # sm86 (A6000, 3090) and sm89 (4090, L40) have smaller shared memory than A100 (sm80)
+        if major == 8 and minor > 0:
+            lg_block_m = min(lg_block_m, 512)
+
     return lg_block_m
 
 ##########################################################################################################################

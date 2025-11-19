@@ -127,37 +127,34 @@ void run_moba_fwd_hdim96(Flash_moba_fwd_params &params, cudaStream_t stream) {
     });
 }
 
+// [MODIFIED] Optimized for A6000 (sm86) to avoid Shared Memory OOM
 template<typename T, bool Is_causal>
 void run_moba_fwd_hdim128(Flash_moba_fwd_params &params, cudaStream_t stream) {
     constexpr static int Headdim = 128;
     auto [cc_major, cc_minor] = get_compute_capability(get_current_device());
-    bool is_sm8x = cc_major == 8 && cc_minor > 0;
+    bool is_sm8x = cc_major == 8 && cc_minor > 0; // A6000, 3090, 4090
+
     DROPOUT_SWITCH(params.p_dropout < 1.f, Is_dropout, [&] {
         if constexpr(!Is_dropout) {
-            // For sm86 or sm89, 64 x 64 is the fastest for causal (because it's square),
-            // and 128 x 32 (48 KB smem) is the fastest for non-causal since we get 2 CTAs per SM.
             if (is_sm8x) {
+                // [A6000 Fix] Use 512 cap
                 if constexpr(!Is_causal) {
-                    run_flash_moba_fwd<Flash_moba_fwd_kernel_traits<Headdim, 128, 32, 4, 1024, false, false, T>, Is_dropout, Is_causal>(params, stream);
+                    run_flash_moba_fwd<Flash_moba_fwd_kernel_traits<Headdim, 128, 32, 4, 512, false, false, T>, Is_dropout, Is_causal>(params, stream);
                 } else {
-                    run_flash_moba_fwd<Flash_moba_fwd_kernel_traits<Headdim, 64, 64, 4, 1024, false, false, T>, Is_dropout, Is_causal>(params, stream);
+                    run_flash_moba_fwd<Flash_moba_fwd_kernel_traits<Headdim, 64, 64, 4, 512, false, false, T>, Is_dropout, Is_causal>(params, stream);
                 }
             } else {
+                // [Default A100]
                 run_flash_moba_fwd<Flash_moba_fwd_kernel_traits<Headdim, 64, 64, 4, 1024, false, false, T>, Is_dropout, Is_causal>(params, stream);
             }
-            // run_flash_moba_fwd<Flash_moba_fwd_kernel_traits<Headdim, 128, 64, 4, true, false, T>, Is_dropout, Is_causal>(params, stream);
-            // run_flash_moba_fwd<Flash_moba_fwd_kernel_traits<Headdim, 128, 64, 4, true, true, T>, Is_dropout, Is_causal>(params, stream);
-            // run_flash_moba_fwd<Flash_moba_fwd_kernel_traits<Headdim, 64, 128, 4, false, false, T>, Is_dropout, Is_causal>(params, stream);
-            // Using 8 warps (128 x 128 and 256 x 64) is 28% slower for seqlen=2k
-            // run_flash_moba_fwd<Flash_moba_fwd_kernel_traits<Headdim, 128, 128, 8, false, false, T>, Is_dropout, Is_causal>(params, stream);
-            // run_flash_moba_fwd<Flash_moba_fwd_kernel_traits<Headdim, 128, 64, 8, false, false, T>, Is_dropout, Is_causal>(params, stream);
-            // 1st ones are good for H100, A100
-            // 2nd one is good for A6000 bc we get slightly better occupancy
         } else {
-            run_flash_moba_fwd<Flash_moba_fwd_kernel_traits<Headdim, 128, 32, 4, 1024, false, false, T>, Is_dropout, Is_causal>(params, stream);
-            // run_flash_moba_fwd<Flash_moba_fwd_kernel_traits<Headdim, 64, 64, 4, false, false, T>, Is_dropout, Is_causal>(params, stream);
-            // run_flash_moba_fwd<Flash_moba_fwd_kernel_traits<Headdim, 128, 32, 4, true, false, T>, Is_dropout, Is_causal>(params, stream);
-            // run_flash_moba_fwd<Flash_moba_fwd_kernel_traits<Headdim, 128, 32, 4, true, true, T>, Is_dropout, Is_causal>(params, stream);
+            if (is_sm8x) {
+                // [A6000 Fix] Use 512 cap for dropout case too
+                run_flash_moba_fwd<Flash_moba_fwd_kernel_traits<Headdim, 128, 32, 4, 512, false, false, T>, Is_dropout, Is_causal>(params, stream);
+            } else {
+                // [Default A100]
+                run_flash_moba_fwd<Flash_moba_fwd_kernel_traits<Headdim, 128, 32, 4, 1024, false, false, T>, Is_dropout, Is_causal>(params, stream);
+            }
         }
     });
 }
